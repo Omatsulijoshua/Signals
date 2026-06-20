@@ -1,0 +1,81 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String         @id @default(uuid())
+  name                String
+  email               String         @unique
+  password            String
+  role                String         @default("USER") // "USER", "ADMIN", "SUPER_ADMIN"
+  subscriptionStatus  String         @default("NONE") // "NONE", "BASIC", "PRO", "VIP"
+  subscriptionExpires DateTime?
+  referralCode        String         @unique
+  referredById        String?
+  referredBy          User?          @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals           User[]         @relation("UserReferrals")
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  payments            Payment[]
+  subscriptions       Subscription[]
+}
+
+model Signal {
+  id           String        @id @default(uuid())
+  type         String        // "FOREX", "CRYPTO"
+  asset        String        // e.g. "EURUSD", "BTCUSDT"
+  direction    String        // "BUY" or "SELL"
+  entry        Float         // Entry trigger price
+  sl           Float         // Stop loss price
+  tp1          Float         // Take Profit 1
+  tp2          Float         // Take Profit 2
+  tp3          Float         // Take Profit 3
+  riskRatio    Float         @default(1.0) // Risk %
+  timeframe    String        @default("1H") // e.g. "15M", "1H", "4H"
+  aiConfidence Int           @default(80) // 0-100%
+  sentiment    String        @default("BULLISH") // BULLISH, BEARISH, NEUTRAL
+  status       String        @default("PENDING") // "PENDING", "ACTIVE", "TP1", "TP2", "TP3", "SL", "EXPIRED"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  result       SignalResult?
+}
+
+model SignalResult {
+  id           String       @id @default(uuid())
+  signalId     String       @unique
+  signal       Signal       @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  currentPrice Float
+  profitLoss   Float        // pips for forex, percentage for crypto
+  roi          Float        // ROI %
+  status       String       // "PENDING", "ACTIVE", "TP1", "TP2", "TP3", "SL", "EXPIRED"
+  duration     Int          @default(0) // Duration in minutes
+  updatedAt    DateTime     @updatedAt
+}
+
+model Subscription {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan       String   // "BASIC", "PRO", "VIP"
+  startDate  DateTime @default(now())
+  expiryDate DateTime
+  autoRenew  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model Payment {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Float
+  status    String          @default("PENDING") // "PENDING", "SUCCESSFUL", "FAILED"
+  provider  String          // "STRIPE", "PAYSTACK", "FLUTTERWAVE", "CRYPTO"
+  reference String          @unique
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}

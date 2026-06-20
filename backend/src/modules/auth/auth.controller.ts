@@ -1,0 +1,157 @@
+import { Router, Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import prisma from "../../config/db";
+import { authenticateJWT, AuthRequest } from "../../middleware/auth";
+import { Role, Plan } from "../../types/enums";
+
+const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-signals-pro-2026";
+
+// Generate unique referral code
+function generateReferralCode(): string {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// REGISTER
+router.post("/register", async (req, res) => {
+  try {
+    const { name, email, password, referralCode } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email and password are required" });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userReferralCode = generateReferralCode();
+
+    let referredById: string | undefined;
+    if (referralCode) {
+      const referrer = await prisma.user.findUnique({ where: { referralCode } });
+      if (referrer) {
+        referredById = referrer.id;
+      }
+    }
+
+    // Determine role (first user becomes SUPER_ADMIN, others USER)
+    const userCount = await prisma.user.count();
+    const role = userCount === 0 ? Role.SUPER_ADMIN : Role.USER;
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        referralCode: userReferralCode,
+        referredById,
+      },
+    });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        subscriptionStatus: user.subscriptionStatus,
+        referralCode: user.referralCode,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// LOGIN
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionExpires: user.subscriptionExpires,
+        referralCode: user.referralCode,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET PROFILE
+router.get("/profile", authenticateJWT as any, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        subscriptionStatus: true,
+        subscriptionExpires: true,
+        referralCode: true,
+        createdAt: true,
+        referredById: true,
+        referrals: {
+          select: {
+            id: true,
+            name: true,
+            subscriptionStatus: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;

@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #060814;
+  --foreground: #f8fafc;
+  --card-bg: rgba(15, 23, 42, 0.45);
+  --card-border: rgba(255, 255, 255, 0.07);
+  --neon-green: #10b981;
+  --neon-red: #f43f5e;
+  --neon-cyan: #06b6d4;
+  --neon-purple: #8b5cf6;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism custom classes */
+.glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+}
+
+.glass-glow-green {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.glass-glow-red {
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.15);
+}
+
+.glass-glow-cyan {
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+}
+
+.glass-glow-purple {
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.15);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0f19;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Glowing text */
+.text-glow-green {
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+.text-glow-red {
+  text-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
+}
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+}
+
+/* Pulsing neon dots */
+.pulse-green {
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse-green-anim 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes pulse-green-anim {
+  to {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+}
